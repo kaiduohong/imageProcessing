@@ -30,7 +30,7 @@ def yCbCr2rgb(im):
 #dct变换
 
 def jpegEncode(f):
-    f = np.array(f,dtype='float')
+    f = np.array(f,dtype='float') - 128
     row, col = np.shape(f)
     if row % 8 != 0:
         r = 8 - row % 8
@@ -46,11 +46,12 @@ def jpegEncode(f):
     #dct
     for i in range(row / 8):
         for j in range(col  / 8):
-            print 'how many'
+            print 'how'
             rowH = i * 8
             rowT = rowH + 8
-            colH = i * 8
+            colH = j * 8
             colT = colH + 8
+
             F[rowH:rowT,colH:colT] = \
                 _twoDimFdctMatrixForm(f[rowH:rowT,colH:colT])
 
@@ -58,7 +59,7 @@ def jpegEncode(f):
 #跟encode差不多
 def jpegDecode(F):
     F = np.array(F, dtype='float')
-    #print np.shape(F)
+
     row, col = np.shape(F)
     if row % 8 != 0:
         r = 8 - row % 8
@@ -76,19 +77,18 @@ def jpegDecode(F):
         for j in range(col / 8):
             rowH = i * 8
             rowT = rowH + 8
-            colH = i * 8
+            colH = j * 8
             colT = colH + 8
             f[rowH:rowT, colH:colT] = \
                 _twoDimIdctMatrixForm(F[rowH:rowT, colH:colT])
 
-    return f
+    return f + 128
 
 #返回矩阵形式
 def _genFdctEff(num):
     E = np.zeros(num*num).reshape(num, num)
     c = np.zeros(num) + np.sqrt(2.0 / num);
     c[0] = np.sqrt(1.0 / num)
-    print c,np.sqrt(2.0/num)
     for i in range(num):
         for j in range(num):
             E[i,j] = c[i] * np.cos((j + 0.5) * np.pi * i / num)
@@ -103,25 +103,24 @@ def _twoDimFdctMatrixForm(f):
 
     #表达成矩阵的形式,F = Cleft * f * Cright
     Cleft = _genFdctEff(row)
+    print 'cl = ',Cleft
     Cright = _genFdctEff(col).transpose()
-
     F = Cleft * np.matrix(f) * Cright
-
+    print 'cr = ',Cright,row,col
     return np.array(F)
 
 #一维dct
 def _dct(f):
     N = np.shape(f)
     F = np.zeros(N)
+    c = np.zeros(N) + np.sqrt(2.0 / N);
+    c[0] = np.sqrt(1.0 / num)
+
     for i in range(N):
-        if i == 0:
-            c = np.sqrt(1.0 / N)
-        else:
-            c = np.sqrt(2.0 / N)
         sums = 0
         for j in range(N):
             sums += f[j] * np.cos(np.PI * (j + 0.5) * i / N)
-        F[i] = c * sums
+        F[i] = c[i] * sums
     return F
 
 #用拆分形式的
@@ -193,10 +192,53 @@ def quantization(im):
         lin = []
         p = re.split(' *',line)
         for j in range(len(p)):
-            lin.append(p[j])
+            lin.append(int(p[j]))
         quantizationTable.append(lin)
-    quantizationTable = np.array(quantizationTable)
+    file.close()
+    quantizationTable = np.array(quantizationTable,'int')
 
+    row,col = np.shape(im)
+    if row % 8 != 0 or col % 8 != 0:
+        raise Exception('row or col num is wrong')
+
+    for i in range(row / 8):
+        for j in range(col / 8):
+            rowH = i * 8
+            rowT = rowH + 8
+            colH = j * 8
+            colT = colH + 8
+            im[rowH:rowT,colH:colT] = np.round(im[rowH:rowT,colH:colT] \
+                                      / quantizationTable)
+
+    return np.array(np.round(im),'int')
+
+def invQuantization(im):
+    #读取亮度量化表
+    file = open('./jpegEncode/data/quantizationTable.txt')
+    quantizationTable = []
+    for line in file:
+        lin = []
+        p = re.split(' *',line)
+        for j in range(len(p)):
+            lin.append(int(p[j]))
+        quantizationTable.append(lin)
+    file.close()
+    quantizationTable = np.array(quantizationTable,'int')
+
+    row,col = np.shape(im)
+    if row % 8 != 0 or col % 8 != 0:
+        raise Exception('row or col num is wrong')
+
+    for i in range(row / 8):
+        for j in range(col / 8):
+            rowH = i * 8
+            rowT = rowH + 8
+            colH = j * 8
+            colT = colH + 8
+            im[rowH:rowT,colH:colT] = im[rowH:rowT,colH:colT]\
+                                      * quantizationTable
+
+    return np.array(np.round(im),'int')
 
 '''
 def _ycc(r, *arg): # in (0,255) range
@@ -222,43 +264,64 @@ def _rgb(y, cb, cr):
 
 '''
 
+def toFile(data,fileName, msg, system = 0):
+    flag = False
+
+    if type(data[0,0]) != np.float64 and system == 0:
+        data = toHex(data)
+        flag = True
+    file = open(os.path.join(fileName),'a')
+    print >>file,msg
+    row,col = np.shape(data)
+    for i in range(row):
+        for j in range(col):
+            if system == 10:
+                print >> file,'%4d'%data[i,j],
+            elif flag:
+                print >>file, data[i][j],
+            else:
+                print >>file,format(data[i,j],'>6.1f'),
+        print >>file, ''
+    file.close()
+
+def toHex(a):
+    a = np.round(a)
+    row,col = np.shape(a)
+    b = []
+    for i in range(row):
+        temp = []
+        for j in range(col):
+            temp.append(str(hex(a[i,j]).replace('0x','').replace('L','')).rjust(4))
+
+        b.append(temp)
+    return b
+
+
 if __name__ == '__main__':
     im = []
     #读取lena数据（文本），存储到im中
-    lenafile = open('./jpegEncode/data/test.dat','r')
+    lenafile = open('./jpegEncode/data/lena.dat','r')
 
     for line in lenafile:
         lin = []
         p = re.split(' *',line)
         for j in range(len(p)):
-       	    lin.append(int(p[j]))
+       	    lin.append(int(p[j],16))
         im.append(lin)
 
     lenafile.close()
 
-    print im
-
-
-
-
-
-
-
-
-
-
-
-
-    #先存成float　方便运算
-    im = np.array(im,dtype='float')
+    #
+    im = np.array(im,dtype='int')
     [row, col] = np.shape(im)
-    temp = np.ndarray.astype(im,'uint8')
-
-    plt.imshow(temp,mpl.cm.gray_r)
-
+    plt.figure('fig1')
+    plt.subplot(221)
+    toFile(im,'./jpegEncode/data/result.txt','原始图片')
+    plt.imshow(im,mpl.cm.gray_r)
+    origin = im
 
     print 'row = ',row,' col = ',col
-
+    print im
     '''#RGB转成YCbCr
     #ycbcrImg = rgb2yCbCr(im)
     #F1 = jpegEncode(ycbcrImg[:,:,0])
@@ -266,13 +329,39 @@ if __name__ == '__main__':
     #F3 = jpegEncode(ycbcrImg[:,:,2])
     #ycbcrImg = jpegDecode(F)
     '''
-    fimg = jpegEncode(im - 128)
+    if os.path.exists('./jpegEncode/data/result.txt'):
+        os.remove('./jpegEncode/data/result.txt')
+
+    toFile(im,'./jpegEncode/data/result.txt','原始图片')
+    #fcdt
+    fimg = jpegEncode(im)
+    print 'fdct'
+
+    toFile(fimg, './jpegEncode/data/result.txt', 'fdct结果')
+    #dct后的图
+    plt.subplot(222)
+    plt.imshow(np.ndarray.astype(fimg + 128,'uint8'),mpl.cm.gray_r)
 
     fimg = quantization(fimg)
+    toFile(fimg, './jpegEncode/data/result.txt', '量化系数',10)
 
+    fimg = invQuantization(fimg)
 
-    im = np.array(jpegDecode(fimg) + 128,'uint8')
+   #反量化后的
+    plt.subplot(222)
+    plt.imshow(np.ndarray.astype(fimg + 128,'uint8'),mpl.cm.gray_r)
+    #print fimg
+    toFile(fimg, './jpegEncode/data/result.txt', '反量化系数',10)
 
+    im = np.array(jpegDecode(fimg) ,'uint8')
+    #print 'decode',np.ndarray.astype(im,'int')
+    #重构的
+    toFile(im, './jpegEncode/data/result.txt', '重构后的结果')
+    plt.subplot(223)
     plt.imshow(im,mpl.cm.gray_r)
+
+
+    different = np.array(origin,'int') - im
+    toFile(different, './jpegEncode/data/result.txt', '原始－重构偏差')
+    print different
     plt.show()
-    raw_input('pause_pause')
