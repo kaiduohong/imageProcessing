@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 import os
+import skimage
+from skimage import io
 import sys
 #reload(sys)
 #sys.setdefaultencoding('utf-8')
@@ -147,6 +149,9 @@ def getSpectrumIm(im):
     print maxn,minn
     return im
 
+
+
+
 def exchange(v, dim):
     j = dim / 2
     for i in range(dim - 1):
@@ -183,9 +188,80 @@ def fft(v, dim, f = 1):
     return v
 
 
+def filter2d(im, filter):
+    [height,weight] = np.shape(im)
+    [h,w] = np.shape(filter)
+    newIm = np.zeros([height,weight])
+    for i in range(height):
+        for j in range(weight):
+            sum = 0
+            for k in range(h):
+                for l in range(w):
+                    posi,posj = i + k - h / 2,j + l - 2 / 2
+                    if posi < 0 or posi >= height or\
+                        posj < 0 or posj >= weight:
+                        continue
+                    sum += im[posi,posj] * filter[h - k - 1,w - l - 1]
+                newIm[i,j] = sum
+    return newIm
+
+
+def rgb2hsi(im):
+    [height,weight,dim] =np.shape(im)
+    hue = np.zeros([height,weight])
+    saturation =  np.zeros([height,weight])
+    idensity = np.zeros([height,weight])
+
+    for i in range(height):
+        for j in range(weight):
+            [r,g,b] = im[i,j,0:3]
+            theta = np.arccos(0.5*((r-g)+(r-b))/\
+                              (np.sqrt((r-g)**2 + \
+                                (r-b)*(g-b) )))/\
+                                (2 * np.pi)
+            if b <= g:
+                hue[i,j] = theta
+            else:
+                hue[i,j] = 1 - theta
+            saturation[i,j] = 1 - min([r,g,b]) / (r+g+b)
+            idensity[i,j] = (r+g+b) / 3.0
+
+    return hue,saturation,idensity
+
+
+
+    pass
+def hsi2rgb(hue,saturation,idensity):
+    [height,weight]  = np.shape(hue)
+    im = np.zeros([height, weight,3])
+
+
+    for i in range(height):
+        for j in range(weight):
+            h,s,ind = hue[i,j],saturation[i,j],idensity[i,j]
+            h *= 2 * np.pi
+            if h < 2. / 3 * np.pi:
+                b = ind * (1 - s)
+                r = ind * (1 + s * np.cos(h) / np.cos(np.pi/3 - h))
+                g = 3 * ind - r - b
+            elif h < 4. / 3 * np.pi:
+                h -= 2 * np.pi / 3
+                r = ind * (1 - s)
+                g = ind * (1 + s * np.cos(h) / np.cos(np.pi/3 - h))
+                b = 3 * ind - r - g
+            else:
+                h -= 4 * np.pi / 3
+                g = ind * (1 - s)
+                b = ind * (1 + s * np.cos(h) / np.cos(np.pi / 3 - h))
+                r = 3 * ind - b - g
+            im[i,j,:] = r,g,b
+    return im
+
+
 def testDft():
     filename = os.path.join('.', 'hw3_input', '97.png')
     im = imread(filename)
+    oim = im
     [height, weight] = np.shape(im)
     plt.subplot(221)
     plt.imshow(im, mpl.cm.gray_r)
@@ -200,6 +276,108 @@ def testDft():
 
 
     plt.show()
+
+def testFilter():
+    filename = os.path.join('.', 'hw3_input', '97.png')
+    im = imread(filename)
+    [height, weight] = np.shape(im)
+    plt.subplot(221)
+    plt.imshow(-im, mpl.cm.gray_r)
+    filter = np.ones([7,7]) / 49
+    newIm = filter2d(im,filter)
+    plt.subplot(222)
+    plt.imshow(-newIm, mpl.cm.gray_r)
+
+    laplacian = np.array([[-1,-1,-1],[-1,8,-1],[-1,-1,-1]])
+    newIm = np.abs(filter2d(im, laplacian) )
+    plt.subplot(223)
+    plt.imshow(-newIm, mpl.cm.gray_r)
+
+    print newIm
+    #laplacian = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+    #newIm = filter2d(im, laplacian)
+    newIm = im + newIm
+    plt.subplot(224)
+    print newIm
+    plt.imshow(-newIm, mpl.cm.gray_r)
+
+    plt.show()
+
+def testC():
+    matrix = np.ones([50,50])
+    cyan = np.zeros([50,50,3])
+    green = np.zeros([50,50,3])
+    magenta = np.zeros([50,50,3])
+    yellow = np.zeros([50,50,3])
+
+    yellow[:,:,0] =  yellow[:,:,1] = matrix
+    magenta[:,:,0] = magenta[:,:,2] = matrix
+    green[:,:,1] = matrix
+    cyan[:,:,1] = cyan[:,:,2] = matrix
+
+    im = np.zeros([100,100,3])
+    im[:50,:50] = yellow
+    im[:50,50:] = magenta
+    im[50:,:50] = cyan
+    im[50:,50:] = green
+    oim = im
+    [h,s,i] = rgb2hsi(im)
+
+    plt.subplot(331)
+    io.imshow(h)
+    plt.subplot(332)
+    io.imshow(s)
+
+
+
+
+    #plt.subplot(222)
+    #io.imshow(i)
+    plt.subplot(333)
+    io.imshow(i)
+
+    #plt.subplot(224)
+    #io.imshow(h)
+    im = hsi2rgb(h,s,i)
+    plt.subplot(334)
+    io.imshow(im)
+
+    plt.subplot(335)
+    io.imshow(oim)
+
+    meanFilter = np.ones([16, 16]) / (16. * 16)
+    print h
+    h = filter2d(h,meanFilter)
+    print h
+
+    im = hsi2rgb(h,s,i)
+    plt.subplot(336)
+    io.imshow(im)
+
+    plt.show()
+
+
+def testFilter():
+    filename = os.path.join('.', 'hw4_input', 'task_1.png')
+    im = imread(filename) / 255.
+    print np.shape(im)
+    tbtMeanFilter = np.ones([3,3]) / 9.
+    nbnMeanFilter = np.ones([9,9]) / 81.
+    im1 = filter2d(im,tbtMeanFilter)
+    im2 = filter2d(im,nbnMeanFilter)
+
+    plt.subplot(331)
+    io.imshow(im2)
+
+    plt.subplot(332)
+    plt.imshow(im1,cmap='gray')
+
+    plt.subplot(333)
+    io.imshow(im1)
+
+    plt.show()
+
+
 
 if __name__ == '__main__':
 
@@ -292,5 +470,8 @@ if __name__ == '__main__':
     plt.bar(np.linspace(0, 256, 256, endpoint=False), \
             newHist, alpha=.8, color='g')
     plt.show()
-    """
-    testDft()
+
+    testDft()"""
+    #testFilter()
+    #testC()
+    testFilter()
