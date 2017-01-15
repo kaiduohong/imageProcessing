@@ -215,6 +215,8 @@ def harmonicMeanFilter(im,n,m):
                     #防止除零
                     sum += 1. / (im[posi,posj]+sys.float_info.epsilon)
             newIm[i,j] = count / sum
+    newIm[newIm>255] =255
+    newIm[newIm<0] = 0
     return newIm
 
 def contraharmonicMeanFilter(im,n,m,Q):
@@ -234,6 +236,8 @@ def contraharmonicMeanFilter(im,n,m,Q):
                     sum += np.power((im[posi,posj]+sys.float_info.epsilon),Q+1)
                     sum2 += np.power((im[posi,posj]+sys.float_info.epsilon),Q)
             newIm[i, j] = sum / (sum2 + sys.float_info.epsilon)
+    newIm[newIm>255] =255
+    newIm[newIm<0] = 0
     return newIm
 
 def task1():
