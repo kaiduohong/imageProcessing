@@ -100,7 +100,6 @@ def testDft():
     newIm = getSpectrumIm(im)
     plt.subplot(222)
     plt.imshow(newIm.astype(np.uint8), 'gray')
-
     plt.show()
 
 def hw3():

@@ -120,27 +120,7 @@ def testC():
 
     plt.show()
 
-def task1():
-    filename = os.path.join('.', 'hw4_input', 'task_1.png')
-    im = imread(filename) / 255.
-    tbtMeanFilter = np.ones([3, 3]) / 9.
-    nbnMeanFilter = np.ones([9, 9]) / 81.
-    im1 = filter2d(im, tbtMeanFilter)
-    im2 = filter2d(im, nbnMeanFilter)
-    im3 = harmonicMeanFilter(im, 3, 3)
-    im4 = harmonicMeanFilter(im, 9, 9)
-    im5 = contraharmonicMeanFilter(im, 3, 3, 1.5)
-    im6 = contraharmonicMeanFilter(im, 9, 9, 1.5)
 
-    plt.subplot(331);io.imshow(im)
-    plt.subplot(332);plt.imshow(im1, cmap='gray')
-    plt.subplot(333);io.imshow(im2)
-    plt.subplot(334);plt.imshow(im3, cmap='gray')
-    plt.subplot(335); plt.imshow(im4, cmap='gray')
-    plt.subplot(336);plt.imshow(im5, cmap='gray')
-    plt.subplot(337);plt.imshow(im6, cmap='gray')
-
-    plt.show()
 
 def generateGaussNoise(m,n,mean,sigma):
     np.random.normal()
@@ -148,18 +128,19 @@ def generateGaussNoise(m,n,mean,sigma):
 def addGaussNoise(im,mean=0,sigma=1):
     [height,weight] = np.shape(im)
     noise = generateGaussNoise(height,weight,mean,sigma)
-    im = im + noise / 255.
-    im[im > 1] = 1.
+    im = im + noise
+    im[im > 255] = 255.
     im[im < 0] = 0.
     return im
 def addSaltPepperNoise(im,p,q):
     [m,n] = np.shape(im)
+    im = im.copy()
     for i in range(m):
         for j in range(n):
             if np.random.uniform() <= p:
-                    im[i,j] = 0
+                    im[i,j] = 255
             elif np.random.uniform() <= q:
-                    im[i,j] = 1
+                    im[i,j] = 0
     return im
 
 def arithmeticMeanFilter(im,m,n):
@@ -217,37 +198,124 @@ def minFilter(im,m,n):
     return newIm
 
 
+def harmonicMeanFilter(im,n,m):
+    [height,weight] = np.shape(im)
+    newIm = np.zeros([height,weight])
+    for i in range(height):
+        for j in range(weight):
+            count = 0
+            sum = 0
+            for k in range(n):
+                for l in range(m):
+                    posi, posj = i + k - n / 2, j + l - m / 2
+                    if posi < 0 or posi >= height or \
+                                    posj < 0 or posj >= weight:
+                        continue
+                    count += 1
+                    #防止除零
+                    sum += 1. / (im[posi,posj]+sys.float_info.epsilon)
+            newIm[i,j] = count / sum
+    return newIm
+
+def contraharmonicMeanFilter(im,n,m,Q):
+    [height, weight] = np.shape(im)
+    newIm = np.zeros([height, weight])
+    for i in range(height):
+        for j in range(weight):
+            sum = 0
+            sum2 = 0
+            for k in range(n):
+                for l in range(m):
+                    posi, posj = i + k - n / 2, j + l - m / 2
+                    if posi < 0 or posi >= height or \
+                                    posj < 0 or posj >= weight:
+                        continue
+                    # 防止除零
+                    sum += np.power((im[posi,posj]+sys.float_info.epsilon),Q+1)
+                    sum2 += np.power((im[posi,posj]+sys.float_info.epsilon),Q)
+            newIm[i, j] = sum / (sum2 + sys.float_info.epsilon)
+    return newIm
+
+def task1():
+    filename = os.path.join('..', 'hw4_input', 'task_1.png')
+    im = imread(filename) / 255.
+    tbtMeanFilter = np.ones([3, 3]) / 9.
+    nbnMeanFilter = np.ones([9, 9]) / 81.
+    im1 = filter2d(im, tbtMeanFilter)
+    im2 = filter2d(im, nbnMeanFilter)
+    im3 = harmonicMeanFilter(im, 3, 3)
+    im4 = harmonicMeanFilter(im, 9, 9)
+    im5 = contraharmonicMeanFilter(im, 3, 3, 1.5)
+    im6 = contraharmonicMeanFilter(im, 9, 9, 1.5)
+
+    plt.subplot(331); plt.imshow(im , cmap='gray')
+    plt.title('origin', fontproperties='SimHei')
+    plt.subplot(332); plt.imshow(im1, cmap='gray')
+    plt.title('3 * 3 mean filter', fontproperties='SimHei')
+    plt.subplot(333); plt.imshow(im2, cmap='gray')
+    plt.title('9 * 9 mean filter', fontproperties='SimHei')
+    plt.subplot(334); plt.imshow(im3, cmap='gray')
+    plt.title('3 * 3 harmonic mean filter', fontproperties='SimHei')
+    plt.subplot(335); plt.imshow(im4, cmap='gray')
+    plt.title('9 * 9 harmonic mean filter', fontproperties='SimHei')
+    plt.subplot(336); plt.imshow(im5, cmap='gray')
+    plt.title('3 * 3 contraharmonic mean filter', fontproperties='SimHei')
+    plt.subplot(337); plt.imshow(im6, cmap='gray')
+    plt.title('9 * 9 contraharmonic mean filter', fontproperties='SimHei')
+
+    plt.show()
+
 def task2():
-    filename = os.path.join('.', 'hw4_input', 'task_2.png')
+    filename = os.path.join('..', 'hw4_input', 'task_2.png')
     im = imread(filename)
-    im = im[:,:,0] / 255.
+    im = im[:,:,0]
+    plt.subplot(331); plt.imshow(im, cmap='gray')
+    plt.title('origin', fontproperties='SimHei')
+
     im1 = addGaussNoise(im,0,40)
     im2 = addSaltPepperNoise(im,0.2,0.2)
-    plt.subplot(331); plt.imshow(im1, cmap='gray')
-    plt.subplot(332); plt.imshow(im2, cmap='gray')
+    im3 = addSaltPepperNoise(im,0.2,0)
+    im4 = arithmeticMeanFilter(im1,3,3)
+    im5 = geometricMeanFilter(im1,3,3)
+    im6 = medianFiltering(im1,3,3)
 
-    im3 = arithmeticMeanFilter(im1,3,3)
-    im4 = geometricMeanFilter(im1,3,3)
-    im5 = medianFiltering(im1,3,3)
 
-    plt.subplot(333);
-    plt.imshow(im3, cmap='gray')
-    plt.subplot(334);
-    plt.imshow(im4, cmap='gray')
-    plt.subplot(335);
-    plt.imshow(im5, cmap='gray')
+    plt.subplot(332); plt.imshow(im1, cmap='gray')
+    plt.title('image with gaussian noise', fontproperties='SimHei')
+    plt.subplot(333); plt.imshow(im2, cmap='gray')
+    plt.title('image with salt and pepper noise', fontproperties='SimHei')
+    plt.subplot(334); plt.imshow(im3, cmap='gray')
+    plt.title('image with salt noise', fontproperties='SimHei')
 
-    im6 = minFilter(im2,3,3)
-    im7 = harmonicMeanFilter(im2,3,3)
-    im8 = contraharmonicMeanFilter(im2,3,3,0.5)
-    im9 = contraharmonicMeanFilter(im2,3,3,-0.5)
+    plt.subplot(335); plt.imshow(im4, cmap='gray')
+    plt.title('arithmeticMeanFilter denoised', fontproperties='SimHei')
+    plt.subplot(336); plt.imshow(im5, cmap='gray')
+    plt.title('geometricMeanFilter denoised', fontproperties='SimHei')
+    plt.subplot(337); plt.imshow(im6, cmap='gray')
+    plt.title('medianFiltering denoised', fontproperties='SimHei')
+    plt.show()
 
-    plt.subplot(336); plt.imshow(im6, cmap='gray')
-    plt.subplot(337);plt.imshow(im7, cmap='gray')
-    plt.subplot(338);plt.imshow(im8, cmap='gray')
-    plt.subplot(339);plt.imshow(im9, cmap='gray')
-    #plt.figure()
-    #plt.subplot(331);plt.imshow(im8, cmap='gray')
+    im7 = minFilter(im2,3,3)
+    im8 = harmonicMeanFilter(im2,3,3)
+    im9 = contraharmonicMeanFilter(im2,3,3,.5)
+    im10 = contraharmonicMeanFilter(im2,3,3,-.5)
+
+    plt.subplot(231); plt.imshow(im, cmap='gray')
+    plt.title('origin', fontproperties='SimHei')
+    plt.subplot(232); plt.imshow(im3, cmap='gray')
+    plt.title('image with salt noise', fontproperties='SimHei')
+    plt.subplot(233); plt.imshow(im7, cmap='gray')
+    plt.title('minFilter denoised', fontproperties='SimHei')
+    plt.subplot(234)
+    plt.imshow(im8, cmap='gray')
+    plt.title('harmonicMeanFilter denoised', fontproperties='SimHei')
+    plt.subplot(235);
+    plt.imshow(im9, cmap='gray')
+    plt.title('contraharmonicMeanFilter q = 0.5', fontproperties='SimHei')
+    plt.subplot(236);
+    plt.imshow(im10, cmap='gray')
+    plt.title('contraharmonicMeanFilter denoised q = -0.5', fontproperties='SimHei')
+
     plt.show()
 
 def task3():
@@ -318,49 +386,11 @@ def task3():
 
 
 
-def testFilter():
-    #task1()
-    #task2()
-    task3()
-def harmonicMeanFilter(im,n,m):
-    [height,weight] = np.shape(im)
-    newIm = np.zeros([height,weight])
-    for i in range(height):
-        for j in range(weight):
-            count = 0
-            sum = 0
-            for k in range(n):
-                for l in range(m):
-                    posi, posj = i + k - n / 2, j + l - m / 2
-                    if posi < 0 or posi >= height or \
-                                    posj < 0 or posj >= weight:
-                        continue
-                    count += 1
-                    #防止除零
-                    sum += 1. / (im[posi,posj]+sys.float_info.epsilon)
-            newIm[i,j] = count / sum
-    return newIm
-
-def contraharmonicMeanFilter(im,n,m,Q):
-    [height, weight] = np.shape(im)
-    newIm = np.zeros([height, weight])
-    for i in range(height):
-        for j in range(weight):
-            sum = sum2 = 0
-            for k in range(n):
-                for l in range(m):
-                    posi, posj = i + k - n / 2, j + l - m / 2
-                    if posi < 0 or posi >= height or \
-                                    posj < 0 or posj >= weight:
-                        continue
-                    # 防止除零
-                    sum += np.power((im[posi,posj]+sys.float_info.epsilon),Q+1)
-                    sum2 += np.power((im[posi,posj]+sys.float_info.epsilon),Q)
-            newIm[i, j] = sum / (sum2 + sys.float_info.epsilon)
-    return newIm
 
 def hw4():
-    pass
+    #task1()
+    task2()
+    #task3()
 
 if __name__ == '__main__':
     hw4()
