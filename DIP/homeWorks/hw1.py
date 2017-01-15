@@ -9,11 +9,60 @@ import skimage
 from skimage import io
 import sys
 
+def scale(im,h,w):
+    [height,weight] = np.shape(im)
+    newIm = np.zeros([h,w],dtype=int)
+    downH = downW = True
+    if h > height:
+        downH = False
+    if w > weight:
+        downW = False
+    for i in range(h):
+        for j in range(w):
+            [u,posi] = np.modf(1. * i * height / h)
+            [v,posj] = np.modf(1. * j * weight / w)
+            if downH: u = 0
+            if downW: v = 0
+            posi = int(posi)
+            posj = int(posj)
+            a = b = c = d = im[posi, posj]
+            if posj + 1 < weight:
+                b = im[posi, posj + 1]
+            if posi + 1 < height:
+                c = im[posi + 1, posj]
+            if posi + 1 < height and posj + 1 < weight:
+                d = im[posi + 1, posj + 1]
+            newIm[i, j] = int(np.round((1 - u) * (1 - v) * a +\
+                                   (1 - u) * v * b + u * (1 - v) * c +\
+                                   u * v * d))
+    return newIm
+
+def quantize(im,level):
+    olevel = 256.
+    im = im.copy()
+    [height,weight] = np.shape(im)
+    for i in range(height):
+        for j in range(weight):
+            im[i,j] = np.uint8(np.round(((olevel - 1) / (level - 1)) * \
+                               np.floor(im[i,j] * level / olevel) ))
+    return im
+
+def downSampling(im,h,w):
+	[height,weight] = np.shape(im)
+	newIm = np.zeros([h,w])
+	for i in range(h):
+		for j in range(w):
+ 			posi = int(np.floor(i * height / h))
+			posj = int(np.floor(j * weight / w))
+			newIm[i,j] = im[posi,posj]
+	return newIm
+
 def hw1():
     filename = os.path.join('../', 'hw1_input', '97.png')
     im = imread(filename)
 
     [height,weight] = np.shape(im)
+
     plt.subplot(331)
     plt.imshow(im, mpl.cm.gray_r)
     plt.title(str(weight)+'*'+str(height),fontproperties='SimHei')
@@ -62,44 +111,21 @@ def hw1():
     plt.show()
 
     plt.subplot(231)
-    plt.imshow(im, mpl.cm.gray_r)
+    print type(im[0,0])
+    plt.imshow(im, 'gray')
     plt.title('origin', fontproperties='SimHei')
 
     levels = [128, 32, 8, 4, 2]
+
     for (i,level) in enumerate(levels):
         newIm = quantize(im, level)
         plt.subplot(232+i)
-        plt.imshow(newIm, mpl.cm.gray_r)
+        plt.imshow(newIm, 'gray')
         plt.title('level='+str(level), fontproperties='SimHei')
 
     plt.show()
 
-    plt.subplot(231)
-    plt.imshow(im, mpl.cm.gray_r)
-    plt.title('origin', fontproperties='SimHei')
-
-    plt.subplot(232)
-    hist = getHistogram(im)
-    plt.bar(np.linspace(0, 256, 256, endpoint=False), \
-            hist, alpha=.8, color='r')
-
-    [hist, newIm] = histogramEqualized(im)
-    plt.subplot(233)
-    plt.imshow(newIm, mpl.cm.gray_r)
-    plt.title('origin', fontproperties='SimHei')
-
-
-    plt.subplot(234)
-    plt.bar(np.linspace(0, 256, 256, endpoint=False), \
-            hist, alpha=.8, color='g')
-
-
-    plt.subplot(235)
-    [newHist, newIm] = histogramEqualized(newIm)
-    plt.bar(np.linspace(0, 256, 256, endpoint=False), \
-            newHist, alpha=.8, color='g')
-    plt.show()
 
 
 if __name__ == '__main__':
-    #hw1()
+    hw1()
