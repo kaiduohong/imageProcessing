@@ -1,6 +1,6 @@
 #-*-coding:utf8-*-
 import numpy as np
-from scipy.misc import imread, imsave, imresize
+from scipy.misc import imread, imsave
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
@@ -173,7 +173,7 @@ def getSpectrumIm(im):
         for j in range(weight):
             im[i,j] *= (-1)**((i&1)^(j&1))
 
-    im = np.log(np.abs(dft2d(im,height,weight)) + sys.float_info.epsilon)
+    im = np.log(np.abs(dft2d(im,height,weight)) + 1)
     return im
 
 def exchange(v, dim):
@@ -296,6 +296,8 @@ def testDft():
     plt.subplot(221)
     plt.imshow(im, mpl.cm.gray_r)
     newIm = getSpectrumIm(im)
+    print np.max(newIm)
+    print np.min(newIm)
     plt.subplot(222)
     plt.imshow(newIm.astype(np.uint8), mpl.cm.gray_r)
 
@@ -404,10 +406,6 @@ def task1():
 
     plt.show()
 
-
-
-
-
 def generateGaussNoise(m,n,mean,sigma):
     np.random.normal()
     return np.random.normal(mean,sigma,size=[m,n])
@@ -416,7 +414,7 @@ def addGaussNoise(im,mean=0,sigma=1):
     noise = generateGaussNoise(height,weight,mean,sigma)
     im = im + noise / 255.
     im[im > 1] = 1.
-    im[im < 0] = 0
+    im[im < 0] = 0.
     return im
 def addSaltPepperNoise(im,p,q):
     [m,n] = np.shape(im)
@@ -531,16 +529,10 @@ def task3():
     newIm[:,:,0],newIm[:,:,1],newIm[:,:,2] = \
         rIm,gIm,bIm
 
-
-    #lena = mpl.image.imread('lena.png')
-    #print lena
-
     plt.subplot(331)
     plt.imshow(im.astype(np.uint8))
-
     plt.subplot(332)
     plt.imshow(newIm.astype(np.uint8))
-
     plt.subplot(333)
     #newIm = np.ndarray.astype
     newIm = newIm.astype(np.uint8)
@@ -561,10 +553,9 @@ def task3():
     plt.imshow(newIm.astype(np.uint8))
 
     hsiIm = rgb2hsi(im)
-    print hsiIm[:,:,1] ,'-=-=',np.max(hsiIm[:,:,0]),np.min(hsiIm[:,:,0]),'+-+-'
-    #hsiIm[:,:,2] = histogramEqualized(hsiIm[:,:,2])
+    hsiIm[:,:,2] = histogramEqualized(hsiIm[:,:,2])
     rgbIm = hsi2rgb(hsiIm[:,:,0],hsiIm[:,:,1],hsiIm[:,:,2])
-    print hsiIm[:,:,0].astype(np.uint8),'--',np.max(hsiIm[:,:,0]),'++-'
+
     plt.subplot(335)
     plt.imshow(hsiIm[:,:,0], cmap='gray')
     plt.subplot(336)
@@ -588,12 +579,8 @@ def task3():
     print newIm[:,:,0]
     '''
     plt.show()
-    rgb = np.zeros([1,1,3])
-    rgb[0,0,0],rgb[0,0,1],rgb[0,0,2] = 40,64,33
-    hsi = rgb2hsi(rgb)
-    rgb = hsi2rgb(hsi[:,:,0],hsi[:,:,1],hsi[:,:,2])
-    print hsi
-    print rgb
+
+
 
 def testFilter():
     #task1()
@@ -732,6 +719,6 @@ if __name__ == '__main__':
     plt.show()
     """
     #testDft()
-    #testFilter()
-    #testC()
     testFilter()
+    #testC()
+    #testFilter()
